@@ -8,5 +8,6 @@ instructions for playing
 5. gui will open
 6. "Hit" button gives the current user a new card
 7. "Hold" button keeps the current users hand / score
+8. "Split" will split your hand into two. You can do this an infinite amount of times
 8. Game ends when all players have either busted or held their hands
 
