@@ -4,16 +4,18 @@ from functools import reduce
 
 class Blackjack(object):
     def __init__(self, players):
+        self.upper_limit = 21
+        self.dealer_limit = 16
         self.players = players
         self.setup()
 
     def setup(self):
         self.active_player = self.players[0] if self.players else None
         for player in self.players:
+            # in case we get two aces
             player.add_card_to_hand(card_factory())
             player.add_card_to_hand(card_factory())
-
-        # self.active_player.set_hand([Card("2"), Card("2")])
+            self.configure_aces(player, self.upper_limit)
 
         # generate the dealer
         self.dealer = Player("Dealer")
@@ -23,20 +25,20 @@ class Blackjack(object):
         dealer_hidden_card.set_shown(False)
         self.dealer.add_card_to_hand(dealer_hidden_card)
 
+    def configure_aces(self, player, limit):
+        aces = [x for x in player.get_hand() if x.get_value() == "A"]
+        if(len(aces) > 0):
+            for i in range(1, len(aces)): aces[i].set_ace_high(False)
+            if(self.get_score(player) > limit):
+                aces[0].set_ace_high(False)
+
     def hit(self, player):
         # get next card and see if they've busted
-        # if(player.get_name() == "jason"):
-        #     player.add_card_to_hand(Card("2"))
-        # else:
         player.add_card_to_hand(card_factory())
 
         # check the aces and set them accordinglys
-        if(player.get_score() > 21):
-            aces = [x for x in player.get_hand() if x.get_value() == "A"]
-            if(len(aces) > 0):
-                for i in range(1, len(aces)): aces[i].set_ace_high(False)
-                if(player.get_score() > 21 and len(aces)):
-                    aces[0].set_ace_high(False)
+        if(self.get_score(player) > self.upper_limit):
+            self.configure_aces(player, self.upper_limit)
 
     def hold(self, player):
         player.set_hold(True)
@@ -56,7 +58,9 @@ class Blackjack(object):
         player_idx = self.players.index(self.active_player)
         for i in range(1, player_len + 1):
             next_player = self.players[(i + player_idx) % player_len]
-            if(not next_player.get_score() > 21 and not next_player.is_hold() and not next_player.is_dealer()):
+            if(not self.get_score(next_player) > self.upper_limit
+                and not next_player.is_hold()
+                and not next_player.is_dealer()):
                 self.active_player = next_player
                 return
 
@@ -71,20 +75,38 @@ class Blackjack(object):
 
     def play_dealer_hand(self):
         self.dealer.show_hand()
-        while(self.dealer.get_score() < 16):
+        while(self.get_score(self.dealer) < self.dealer_limit):
             self.dealer.add_card_to_hand(card_factory())
+            self.configure_aces(self.dealer, self.dealer_limit)
+
+    def get_score(self, player):
+        return reduce(
+            lambda acc, curr: acc + self.__getNumValue(curr) if curr.is_shown() else acc,
+            player.get_hand(),
+            0)
+
+    def __getNumValue(self, card):
+        cardVal = card.get_value()
+        if(cardVal in ["J", "Q", "K"]):
+            return 10
+        elif(cardVal == "A"):
+            return 11 if card.is_ace_high() else 1
+        elif cardVal.isdigit():
+            return int(cardVal)
+        else:
+            return 0
 
     def get_winners(self):
-        possible_winners = [x for x in self.players if x.get_score() <= 21]
-        if(self.dealer.get_score() > 21):
+        possible_winners = [x for x in self.players if self.get_score(x) <= self.upper_limit]
+        if(self.get_score(self.dealer) > self.upper_limit):
             return possible_winners
         else:
             result = []
             ties = []
             for player in possible_winners:
-                if(player.get_score() > self.dealer.get_score()):
+                if(self.get_score(player) > self.get_score(self.dealer)):
                     result.append(player)
-                elif(player.get_score() == self.dealer.get_score()):
+                elif(self.get_score(player) == self.get_score(self.dealer)):
                     ties.append(player)
             if(len(result) != 0):
                 return result

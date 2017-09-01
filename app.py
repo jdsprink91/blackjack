@@ -1,6 +1,7 @@
 from player import Player
 from card import Card, card_factory
 from blackjack import Blackjack
+from functools import reduce
 import tkinter as tk
 
 class Application(tk.Frame):
@@ -59,14 +60,14 @@ class Application(tk.Frame):
         label.grid(row=index, column=1, sticky="W")
 
     def write_player_score(self, player, label, index, color):
-        label.config(text = str(player.get_score()), fg = color)
+        label.config(text = str(self.blackjack.get_score(player)), fg = color)
         label.grid(row=index, column=2, sticky="W")
 
     def setup_player_row(self, player, index, color="black"):
         self.player_to_row[player] = dict()
         self.player_to_row[player]["name"] = tk.Label(self.master, text=player.get_name() + ": ")
         self.player_to_row[player]["hand"] = tk.Label(self.master, text=player.get_hand_as_str())
-        self.player_to_row[player]["score"] = tk.Label(self.master, text=str(player.get_score()))
+        self.player_to_row[player]["score"] = tk.Label(self.master, text=str(self.blackjack.get_score(player)))
         self.player_to_row[player]["row_ind"] = index
 
         self.write_player_info(player)
@@ -97,7 +98,7 @@ class Application(tk.Frame):
     def hit_active_player(self):
         active_player = self.blackjack.get_active_player()
         self.blackjack.hit(active_player)
-        if(active_player.get_score() > 21):
+        if(self.blackjack.get_score(active_player) > 21):
             self.write_player_info(active_player, "red")
         else:
             self.write_after_hand_move_no_bust_hold(active_player)
@@ -118,7 +119,11 @@ class Application(tk.Frame):
         self.create_active_player_label_text()
 
     def split_active_player(self):
+        # get some info
         active_player = self.blackjack.get_active_player()
+        players = self.blackjack.get_players()
+        dealer = self.blackjack.get_dealer()
+
         active_player_info = self.player_to_row[active_player]
         self.blackjack.set_next_active_player()
 
@@ -126,28 +131,40 @@ class Application(tk.Frame):
         active_player.set_hand([curr_hand[0]])
         self.write_player_info(active_player)
 
-        split_player = Player(active_player.get_name() + "*")
+        # check to see how many split hands this player hands
+        name_to_check = active_player.get_name().replace("*", "")
+        num_splits = reduce(
+            lambda acc, curr: acc + 1 if curr.get_name().startswith(name_to_check) else acc,
+            players,
+            0
+        )
+
+        # find the original player
+        og_player = [x for x in players if x.get_name() == name_to_check][0]
+
+        split_player = Player(og_player.get_name() + "*" * num_splits)
         split_player.set_hand([curr_hand[0]])
 
-        dealer = self.blackjack.get_dealer()
+        to_place_split_player = self.player_to_row[og_player]["row_ind"] + num_splits - 1
+
         dealer_info = self.player_to_row[self.blackjack.get_dealer()]
         self.clear_player_row(dealer)
         dealer_info["row_ind"] += 1
         self.write_player_info(dealer)
 
         for key, val in self.player_to_row.items():
-            if(val["row_ind"] > active_player_info["row_ind"]):
+            if(val["row_ind"] > to_place_split_player):
                 self.clear_player_row(key)
                 val["row_ind"] += 1
-                if(key.get_score() > 21):
+                if(self.blackjack.get_score(key) > 21):
                     self.write_player_info(key, "red")
                 elif(key.is_hold()):
                     self.write_player_info(key, "green")
                 else:
                     self.write_player_info(key)
 
-        self.setup_player_row(split_player, active_player_info["row_ind"] + 1)
-        self.blackjack.get_players().insert(active_player_info["row_ind"], split_player)
+        self.setup_player_row(split_player, to_place_split_player + 1)
+        self.blackjack.get_players().insert(to_place_split_player, split_player)
 
         self.can_show_split_btn()
         self.create_active_player_label_text()
@@ -155,7 +172,7 @@ class Application(tk.Frame):
     def end_game(self):
         self.blackjack.play_dealer_hand()
         dealer = self.blackjack.get_dealer()
-        if(dealer.get_score() > 21):
+        if(self.blackjack.get_score(dealer) > 21):
             self.write_player_info(dealer, "red")
         else:
             self.write_player_info(dealer)

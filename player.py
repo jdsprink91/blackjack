@@ -52,17 +52,3 @@ class Player(object):
                     else:
                         handToShow.append("A (low)")
         return ", ".join(handToShow)
-
-    def get_score(self):
-        return reduce(lambda acc, curr: acc + self.__getNumValue(curr) if curr.is_shown() else acc, self.hand, 0)
-
-    def __getNumValue(self, card):
-        cardVal = card.get_value()
-        if(cardVal in ["J", "Q", "K"]):
-            return 10
-        elif(cardVal == "A"):
-            return 11 if card.is_ace_high() else 1
-        elif cardVal.isdigit():
-            return int(cardVal)
-        else:
-            return 0
