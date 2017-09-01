@@ -13,7 +13,7 @@ class Blackjack(object):
             player.add_card_to_hand(card_factory())
             player.add_card_to_hand(card_factory())
 
-        self.active_player.set_hand([Card("A"), Card("2")])
+        # self.active_player.set_hand([Card("2"), Card("2")])
 
         # generate the dealer
         self.dealer = Player("Dealer")
@@ -25,6 +25,9 @@ class Blackjack(object):
 
     def hit(self, player):
         # get next card and see if they've busted
+        # if(player.get_name() == "jason"):
+        #     player.add_card_to_hand(Card("2"))
+        # else:
         player.add_card_to_hand(card_factory())
 
         # check the aces and set them accordinglys
@@ -58,6 +61,10 @@ class Blackjack(object):
                 return
 
         self.active_player = None
+
+    def can_split_hand(self, player):
+        hand = player.get_hand()
+        return len(hand) == 2 and hand[0].get_value() == hand[1].get_value()
 
     def is_game_over(self):
         return self.active_player == None

@@ -14,6 +14,7 @@ class Application(tk.Frame):
         for children in self.master.children.values():
             info = children.grid_info()
             if info['row'] == str(row):
+                print(info)
                 return children
         return None
 
@@ -33,11 +34,9 @@ class Application(tk.Frame):
         self.player_to_row = dict()
         for idx, player in enumerate(players):
             real_row_val = idx + 1
-            self.player_to_row[player] = real_row_val
             self.setup_player_row(player, real_row_val)
 
         dealer_row = len(players) + 1
-        self.player_to_row[dealer] = dealer_row
         self.setup_player_row(dealer, dealer_row)
 
         # setup special buttons and such
@@ -52,33 +51,51 @@ class Application(tk.Frame):
         self.active_player_label_text = tk.StringVar()
         self.create_active_player_label_text()
         self.active_player_label = tk.Label(self.master, textvariable=self.active_player_label_text)
-        self.active_player_label.grid(row=self.last_row_idx, column=2, stick="W")
+        self.active_player_label.grid(row=self.last_row_idx, column=3, stick="W")
 
-    def write_player_name(self, player, index, color):
-        tk.Label(self.master, text=player.get_name() + ": ", fg=color).grid(row=index, column = 0, sticky="W")
+        self.split_btn = tk.Button(self.master, text="Split", command=self.split_active_player, width=10)
+        if(self.blackjack.can_split_hand(self.blackjack.get_active_player())):
+            self.split_btn.grid(row=self.last_row_idx, column=2)
 
-    def write_player_hand(self, player, index, color):
-        tk.Label(self.master, text=player.get_hand_as_str(), fg=color).grid(row=index, column=1, sticky="W")
+    def write_player_name(self, player, label, index, color):
+        label.config(fg=color)
+        label.grid(row=index, column = 0, sticky="W")
 
-    def write_player_score(self, player, index, color):
-        tk.Label(self.master, text=str(player.get_score()), fg=color).grid(row=index, column=2, sticky="W")
+    def write_player_hand(self, player, label, index, color):
+        label.config(text = player.get_hand_as_str(), fg = color)
+        label.grid(row=index, column=1, sticky="W")
+
+    def write_player_score(self, player, label, index, color):
+        label.config(text = str(player.get_score()), fg = color)
+        label.grid(row=index, column=2, sticky="W")
 
     def setup_player_row(self, player, index, color="black"):
-        self.write_player_name(player, index, color)
-        self.write_player_hand(player, index, color)
-        self.write_player_score(player, index, color)
+        self.player_to_row[player] = dict()
+        self.player_to_row[player]["name"] = tk.Label(self.master, text=player.get_name() + ": ")
+        self.player_to_row[player]["hand"] = tk.Label(self.master, text=player.get_hand_as_str())
+        self.player_to_row[player]["score"] = tk.Label(self.master, text=str(player.get_score()))
+        self.player_to_row[player]["row_ind"] = index
 
-    def write_after_hand_move_no_bust_hold(self, player, index, color="black"):
-        self.write_player_hand(player, index, color)
-        self.write_player_score(player, index, color)
+        self.write_player_info(player)
+
+    def write_player_info(self, player, color="black"):
+        player_info = self.player_to_row[player]
+        self.write_player_name(player, player_info["name"], player_info["row_ind"], color)
+        self.write_player_hand(player, player_info["hand"], player_info["row_ind"], color)
+        self.write_player_score(player, player_info["score"], player_info["row_ind"], color)
+
+    def write_after_hand_move_no_bust_hold(self, player, color="black"):
+        player_info = self.player_to_row[player]
+        self.write_player_hand(player, player_info["hand"], player_info["row_ind"], color)
+        self.write_player_score(player, player_info["score"], player_info["row_ind"], color)
 
     def hit_active_player(self):
         active_player = self.blackjack.get_active_player()
         self.blackjack.hit(active_player)
         if(active_player.get_score() > 21):
-            self.setup_player_row(active_player, self.player_to_row[active_player], "red")
+            self.write_player_info(active_player, "red")
         else:
-            self.write_after_hand_move_no_bust_hold(active_player, self.player_to_row[active_player])
+            self.write_after_hand_move_no_bust_hold(active_player)
         self.blackjack.set_next_active_player()
         if(self.blackjack.is_game_over()):
             self.end_game()
@@ -88,13 +105,16 @@ class Application(tk.Frame):
     def hold_active_player(self):
         active_player = self.blackjack.get_active_player()
         self.blackjack.hold(active_player)
-        self.setup_player_row(active_player, self.player_to_row[active_player], "green")
+        self.write_player_info(active_player, "green")
         self.blackjack.set_next_active_player()
         if(self.blackjack.is_game_over()):
             self.end_game()
             return
         self.create_active_player_label_text()
 
+    def split_active_player(self):
+        pass
+        
     def end_game(self):
         self.hit_btn.grid_remove()
         self.hold_btn.grid_remove()
@@ -103,9 +123,9 @@ class Application(tk.Frame):
         self.blackjack.play_dealer_hand()
         dealer = self.blackjack.get_dealer()
         if(dealer.get_score() > 21):
-            self.setup_player_row(dealer, self.player_to_row[dealer], "red")
+            self.write_player_info(dealer, "red")
         else:
-            self.setup_player_row(dealer, self.player_to_row[dealer])
+            self.write_player_info(dealer)
 
         winners = [x.get_name() for x in self.blackjack.get_winners()]
         final_text = "No one"
