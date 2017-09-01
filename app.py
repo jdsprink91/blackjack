@@ -1,5 +1,4 @@
 from player import Player
-from card import Card, card_factory
 from blackjack import Blackjack
 from functools import reduce
 import tkinter as tk
@@ -11,14 +10,6 @@ class Application(tk.Frame):
         self.master = master
         self.create_widgets()
 
-    def get_row_in_grid(self, row):
-        for children in self.master.children.values():
-            info = children.grid_info()
-            if info['row'] == str(row):
-                print(info)
-                return children
-        return None
-
     def create_active_player_label_text(self):
         self.active_player_label_text.set("It is " + self.blackjack.get_active_player().get_name() + "'s turn")
 
@@ -28,9 +19,11 @@ class Application(tk.Frame):
         players = self.blackjack.get_players()
         dealer = self.blackjack.get_dealer()
 
+        # headers
         tk.Label(self.master, text="name").grid(row=0, column = 0, sticky="W")
         tk.Label(self.master, text="hand").grid(row=0, column=1, sticky="W")
         tk.Label(self.master, text="score").grid(row=0, column=2, sticky="W")
+        tk.Label(self.master, text="actions").grid(row=0, column=3, sticky="W")
 
         # setup players and dealer
         self.player_to_row = dict()
@@ -42,18 +35,18 @@ class Application(tk.Frame):
         self.setup_player_row(dealer, dealer_row)
 
         # setup special buttons and such
-        tk.Button(self.master, text="Hit", command=self.hit_active_player, width=10).grid(row=0, column=3, sticky="W")
-        tk.Button(self.master, text="Hold", command=self.hold_active_player, width=10).grid(row=1, column=3, sticky="W")
+        tk.Button(self.master, text="Hit", command=self.hit_active_player, width=10).grid(row=1, column=3, sticky="W")
+        tk.Button(self.master, text="Hold", command=self.hold_active_player, width=10).grid(row=2, column=3, sticky="W")
         self.active_player_label_text = tk.StringVar()
         self.create_active_player_label_text()
-        tk.Label(self.master, textvariable=self.active_player_label_text).grid(row=3, column=3, sticky="W")
+        tk.Label(self.master, textvariable=self.active_player_label_text).grid(row=4, column=3, sticky="W")
 
         self.split_btn = tk.Button(self.master, text="Split", command=self.split_active_player, width=10)
         self.can_show_split_btn()
 
     def write_player_name(self, player, label, index, color):
         label.config(fg=color)
-        label.grid(row=index, column = 0, sticky="W")
+        label.grid(row=self.player_to_row[player]["row_ind"], column = 0, sticky="W")
 
     def write_player_hand(self, player, label, index, color):
         label.config(text = player.get_hand_as_str(), fg = color)
@@ -91,13 +84,15 @@ class Application(tk.Frame):
 
     def can_show_split_btn(self):
         if(self.blackjack.can_split_hand(self.blackjack.get_active_player())):
-            self.split_btn.grid(row=2, column=3)
+            self.split_btn.grid(row=3, column=3)
         else:
             self.split_btn.grid_remove()
 
     def hit_active_player(self):
         active_player = self.blackjack.get_active_player()
         self.blackjack.hit(active_player)
+
+        # only want to write what we have to
         if(self.blackjack.get_score(active_player) > 21):
             self.write_player_info(active_player, "red")
         else:
@@ -127,6 +122,7 @@ class Application(tk.Frame):
         active_player_info = self.player_to_row[active_player]
         self.blackjack.set_next_active_player()
 
+        # split the current player's hand
         curr_hand = active_player.get_hand()
         active_player.set_hand([curr_hand[0]])
         self.write_player_info(active_player)
@@ -183,8 +179,7 @@ class Application(tk.Frame):
             final_text = "Winners: "
             final_text += ", ".join(winners)
 
-        tk.Label(self.master, text=final_text).grid(row=3, column=3, stick="W")
-
+        self.active_player_label_text.set(final_text)
 
 if __name__ == '__main__':
     num_players = input("Number of Players: ")

@@ -34,11 +34,13 @@ class Player(object):
     def add_card_to_hand(self, card):
         self.hand.append(card)
 
+    # "flips" all hidden cards
     def show_hand(self):
         for card in self.hand:
             if not card.is_shown():
                 card.set_shown(True)
 
+    # returns string of all of your shown cards
     def get_hand_as_str(self):
         handToShow = []
         for card in self.hand:

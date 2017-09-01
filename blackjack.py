@@ -4,10 +4,33 @@ from functools import reduce
 
 class Blackjack(object):
     def __init__(self, players):
+        # set numbers in case you want to change these easily
         self.upper_limit = 21
         self.dealer_limit = 16
         self.players = players
         self.setup()
+
+    # private, only needed in this class
+    def __getNumValue(self, card):
+        cardVal = card.get_value()
+        if(cardVal in ["J", "Q", "K"]):
+            return 10
+        elif(cardVal == "A"):
+            return 11 if card.is_ace_high() else 1
+        elif cardVal.isdigit():
+            return int(cardVal)
+        else:
+            return 0
+
+
+    def get_players(self):
+        return self.players
+
+    def get_dealer(self):
+        return self.dealer
+
+    def get_active_player(self):
+        return self.active_player
 
     def setup(self):
         self.active_player = self.players[0] if self.players else None
@@ -25,13 +48,6 @@ class Blackjack(object):
         dealer_hidden_card.set_shown(False)
         self.dealer.add_card_to_hand(dealer_hidden_card)
 
-    def configure_aces(self, player, limit):
-        aces = [x for x in player.get_hand() if x.get_value() == "A"]
-        if(len(aces) > 0):
-            for i in range(1, len(aces)): aces[i].set_ace_high(False)
-            if(self.get_score(player) > limit):
-                aces[0].set_ace_high(False)
-
     def hit(self, player):
         # get next card and see if they've busted
         player.add_card_to_hand(card_factory())
@@ -43,17 +59,22 @@ class Blackjack(object):
     def hold(self, player):
         player.set_hold(True)
 
-    def get_players(self):
-        return self.players
+    def get_score(self, player):
+        return reduce(
+            lambda acc, curr: acc + self.__getNumValue(curr) if curr.is_shown() else acc,
+            player.get_hand(),
+            0)
 
-    def get_dealer(self):
-        return self.dealer
+    # function to see how many high aces you can have in your hand
+    def configure_aces(self, player, limit):
+        aces = [x for x in player.get_hand() if x.get_value() == "A"]
+        if(len(aces) > 0):
+            for i in range(1, len(aces)): aces[i].set_ace_high(False)
+            if(self.get_score(player) > limit):
+                aces[0].set_ace_high(False)
 
-    def get_active_player(self):
-        return self.active_player
-
+    # modifies internal state. specifically the active_player
     def set_next_active_player(self):
-        # get the players that can play and get the next player
         player_len = len(self.players)
         player_idx = self.players.index(self.active_player)
         for i in range(1, player_len + 1):
@@ -64,14 +85,8 @@ class Blackjack(object):
                 self.active_player = next_player
                 return
 
+        # will be here if game is over
         self.active_player = None
-
-    def can_split_hand(self, player):
-        hand = player.get_hand()
-        return len(hand) == 2 and hand[0].get_value() == hand[1].get_value()
-
-    def is_game_over(self):
-        return self.active_player == None
 
     def play_dealer_hand(self):
         self.dealer.show_hand()
@@ -79,22 +94,13 @@ class Blackjack(object):
             self.dealer.add_card_to_hand(card_factory())
             self.configure_aces(self.dealer, self.dealer_limit)
 
-    def get_score(self, player):
-        return reduce(
-            lambda acc, curr: acc + self.__getNumValue(curr) if curr.is_shown() else acc,
-            player.get_hand(),
-            0)
+    def can_split_hand(self, player):
+        hand = player.get_hand()
+        # can only split if you have two cards
+        return len(hand) == 2 and hand[0].get_value() == hand[1].get_value()
 
-    def __getNumValue(self, card):
-        cardVal = card.get_value()
-        if(cardVal in ["J", "Q", "K"]):
-            return 10
-        elif(cardVal == "A"):
-            return 11 if card.is_ace_high() else 1
-        elif cardVal.isdigit():
-            return int(cardVal)
-        else:
-            return 0
+    def is_game_over(self):
+        return self.active_player == None
 
     def get_winners(self):
         possible_winners = [x for x in self.players if self.get_score(x) <= self.upper_limit]

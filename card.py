@@ -28,6 +28,7 @@ class Card(object):
         self.aceHigh = bool
 
 
+# function to be called when you want a random card
 def card_factory():
     # generate rand int between 1 - 13
     cardNum = randint(1, 13)
